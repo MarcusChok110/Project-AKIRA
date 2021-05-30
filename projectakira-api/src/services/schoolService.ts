@@ -1,11 +1,13 @@
 import { Pool } from 'pg';
-import { School } from '../models/schoolModel';
+import { School, SchoolDTO } from '../models/schoolModel';
 
 export const dbName = 'schools';
 
 // Returns all schools from database
 export async function getSchools(pool: Pool): Promise<School[]> {
-  const result = await pool.query<School>(`SELECT * FROM ${dbName};`);
+  const result = await pool.query<School>(
+    `SELECT * FROM ${dbName} ORDER BY id;`
+  );
   return result.rows;
 }
 
@@ -21,29 +23,41 @@ export async function findSchool(pool: Pool, id: number): Promise<School[]> {
 // Creates a new school in the database
 export async function insertSchool(
   pool: Pool,
-  school: School
+  s3: AWS.S3,
+  school: SchoolDTO
 ): Promise<School | undefined> {
-  const result = await pool.query<School>(
+  const uploadParams = createS3UploadParams(school.image!);
+  const uploadResult = await s3.upload(uploadParams).promise();
+
+  const dbResult = await pool.query<School>(
     `
-    INSERT INTO ${dbName} (name, about, location, admission, image)
-    VALUES ($1, $2, $3, $3, $4, $5)
-    RETURNING *;
-    `,
-    extractFieldsFromSchool(school)
+        INSERT INTO ${dbName} (name, about, location, admission, image)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+      `,
+    [...extractFieldsFromSchool(school).slice(0, 4), uploadResult.Location]
   );
 
-  return result.rows[0];
-  // TODO: handle image uploading with s3
+  return dbResult.rows[0];
 }
 
 // Updates a school in the database by id
 export async function updateSchool(
   pool: Pool,
-  school: School
+  s3: AWS.S3,
+  school: SchoolDTO
 ): Promise<School | undefined> {
   const oldSchool = await findSchool(pool, school.id);
+  if (oldSchool.length === 0) return await insertSchool(pool, s3, school);
 
-  if (oldSchool.length == 0) return await insertSchool(pool, school);
+  let image = oldSchool[0]?.image;
+
+  // update image URL if image in request
+  if (school.image) {
+    const uploadParams = createS3UploadParams(school.image);
+    const uploadResult = await s3.upload(uploadParams).promise();
+    image = uploadResult.Location;
+  }
 
   const result = await pool.query<School>(
     `
@@ -56,11 +70,10 @@ export async function updateSchool(
     WHERE id = $6
     RETURNING *;
     `,
-    extractFieldsFromSchool(school)
+    [...extractFieldsFromSchool(school).slice(0, 4), image, school.id]
   );
 
   return result.rows[0];
-  // TODO: handle image uploading with s3
 }
 
 // Deletes a school from the database by id
@@ -74,7 +87,7 @@ export async function deleteSchool(pool: Pool, id: number): Promise<boolean> {
 }
 
 // For inserting/updating values in specified order for SQL queries
-export function extractFieldsFromSchool(school: School) {
+export function extractFieldsFromSchool(school: School | SchoolDTO) {
   return [
     school.name,
     school.about,
@@ -83,4 +96,15 @@ export function extractFieldsFromSchool(school: School) {
     school.image,
     school.id,
   ];
+}
+
+export function createS3UploadParams(
+  image: Express.Multer.File
+): AWS.S3.PutObjectRequest {
+  return {
+    Bucket: process.env.AWS_BUCKET_NAME!,
+    Key: image.originalname,
+    Body: image.buffer,
+    ACL: 'public-read',
+  };
 }
