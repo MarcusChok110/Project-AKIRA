@@ -1,6 +1,6 @@
 # Project AKIRA
 
-This is a simple dynamic listsing website created for Dreamschools. The bread and butter of this project consists of React for the frontend and Express for the backend, written in TypeScript for added type safety. The data is stored in the cloud, using an AWS RDS PostgreSQL database and an AWS S3 image bucket.
+This is a simple dynamic listing website created for Dreamschools. The bread and butter of this project consists of React for the frontend and Express for the backend, written in TypeScript for added type safety. The data is stored in the cloud, using an AWS RDS PostgreSQL database and an AWS S3 image bucket.
 
 ## Live Demo
 
