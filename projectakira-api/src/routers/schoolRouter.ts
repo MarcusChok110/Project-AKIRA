@@ -1,9 +1,10 @@
 import express from 'express';
 import * as schoolService from '../services/schoolService';
-import { pool } from '../data/connections';
+import { pool, s3 } from '../data/connections';
 import { StatusCodes } from 'http-status-codes';
+import { SchoolDTO } from '../models/schoolModel';
 
-const schoolRouter = express.Router();
+export const schoolRouter = express.Router();
 
 // GET /schools
 schoolRouter.get('/', async (_req, res) => {
@@ -20,16 +21,17 @@ schoolRouter.get('/:id', async (req, res) => {
 
 // POST /schools
 schoolRouter.post('/', async (req, res) => {
-  const school = req.body;
-  const result = await schoolService.insertSchool(pool, school);
+  const school: SchoolDTO = { ...req.body, image: req.file };
+
+  const result = await schoolService.insertSchool(pool, s3, school);
   res.json(result);
 });
 
 // PUT /schools/:id
 schoolRouter.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  const school = { ...req.body, id };
-  const result = await schoolService.updateSchool(pool, school);
+  const school = { ...req.body, image: req.file, id };
+  const result = await schoolService.updateSchool(pool, s3, school);
   res.json(result);
 });
 
@@ -39,8 +41,6 @@ schoolRouter.delete('/:id', async (req, res) => {
   const result = await schoolService.deleteSchool(pool, id);
 
   return result
-    ? res.status(StatusCodes.NO_CONTENT)
-    : res.status(StatusCodes.NOT_FOUND);
+    ? res.status(StatusCodes.NO_CONTENT).send()
+    : res.status(StatusCodes.NOT_FOUND).send();
 });
-
-export { schoolRouter };
