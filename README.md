@@ -4,9 +4,9 @@ This is a simple dynamic listsing website created for Dreamschools. The bread an
 
 ## Live Demo
 
-This application (React frontend) is deployed at http://projectakira.herokuapp.com/.
+This application (React frontend) is deployed at https://projectakira.herokuapp.com/.
 
-The API (Express backend) is deployed at http://projectakira-api.herokuapp.com/.
+The API (Express backend) is deployed at https://projectakira-api.herokuapp.com/.
 
 ## Pages
 
